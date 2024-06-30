@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Cattle Counter</title>
+    <script
+      src="https://cdn.socket.io/4.7.5/socket.io.min.js"
+      integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO"
+      crossorigin="anonymous"
+    ></script>
+  </head>
+  <body>
+    <h1>Cattle Counter</h1>
+    <video id="video" autoplay muted></video>
+    <canvas
+      id="overlay"
+      style="position: absolute; top: 0; left: 0; pointer-events: none"
+    ></canvas>
+    <p>Cattle count: <span id="cattle-count">0</span></p>
+
+    <script>
+      const socket = io.connect(
+        location.protocol + "//" + document.domain + ":" + location.port
+      );
+      socket.on("connect", () => {
+        console.log("Connected to server");
+        startVideoStream();
+      });
+
+      function startVideoStream() {
+        const video = document.getElementById("video");
+        const cattleCount = document.getElementById("cattle-count");
+        const overlay = document.getElementById("overlay");
+        const overlayCtx = overlay.getContext("2d");
+
+        navigator.mediaDevices
+          .getUserMedia({ video: true })
+          .then((stream) => {
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+              video.play();
+              overlay.width = video.videoWidth;
+              overlay.height = video.videoHeight;
+              setInterval(() => {
+                const canvas = document.createElement("canvas");
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext("2d").drawImage(video, 0, 0);
+                const imageData = canvas.toDataURL("image/jpeg");
+                socket.emit("video_stream", imageData);
+              }, 1000 / 4); // 3 FPS -> More frame increase Cpu load
+            };
+          })
+          .catch((err) => {
+            console.error("Error starting video stream:", err);
+          });
+
+        socket.on("cattle_count", (data) => {
+          console.log("count ", data.count);
+          cattleCount.textContent = data.count;
+          overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+          overlayCtx.font = "18px Arial";
+          overlayCtx.fillStyle = "red";
+          data.boxes_scores.forEach(([x, y, w, h], index) => {
+            overlayCtx.strokeStyle = "red";
+            overlayCtx.strokeRect(x, y, w, h);
+            overlayCtx.fillText(`Cattle ${index + 1}`, x, y - 5);
+          });
+        });
+      }
+    </script>
+  </body>
+</html>
