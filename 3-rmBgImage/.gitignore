@@ -1,0 +1,4 @@
+./model/u2net.onnx
+
+*.onnx
+.venv

@@ -1,0 +1,9 @@
+services:
+  wrapper:
+    container_name: remove-bg-image
+    build: .
+    ports:
+      - 5000:5000
+    volumes:
+      - './:/app'
+    
